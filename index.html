@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dichiarazione d'Intenti: Builder Interattivo con IA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Parchment -->
+    <!-- Application Structure Plan: L'applicazione è un "builder" interattivo e ora completamente editabile, inclusi i pilastri del gioco tramite slider interattivi. L'utente può caricare esempi predefiniti e modificare ogni campo di testo e le proporzioni del gioco. Le funzioni AI (generatore di trame, suggeritore di idee) leggono dinamicamente i contenuti modificati dall'utente per fornire risultati personalizzati. È stato aggiunto un pulsante di reset per ripristinare i dati del template originale, migliorando l'usabilità. L'intera struttura è ora ottimizzata per dispositivi mobili (responsive). -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Pilastri del Gioco. -> Goal: Permettere la personalizzazione completa delle proporzioni. -> Viz/Presentation Method: Tre slider interattivi (input type="range") collegati a un grafico a ciambella (Chart.js). -> Interaction: L'utente muove uno slider e gli altri due si adattano per mantenere il totale di 100%. Il grafico si aggiorna in tempo reale. -> Justification: Offre un controllo granulare e un feedback visivo immediato sull'equilibrio del gioco, superando la limitazione di un grafico statico.
+        - Report Info: Tutte le sezioni testuali della DDI. -> Goal: Permettere la personalizzazione completa. -> Viz/Presentation Method: Div con `contenteditable="true"`. -> Interaction: L'utente può cliccare e scrivere direttamente in ogni campo. -> Justification: Trasforma l'applicazione in uno strumento di creazione attivo anziché passivo.
+        - Gemini Feature: Generatore di Trame / Suggeritore di Idee. -> Goal: Ispirare e espandere. -> Viz/Presentation Method: Pulsanti e aree di testo. -> Interaction: Le chiamate a Gemini ora usano il testo inserito dall'utente nei campi editabili. -> Justification: Integra l'IA nel processo creativo dell'utente in modo dinamico.
+        - Reset Feature: Pulsante di Reset. -> Goal: Migliorare l'usabilità. -> Viz/Presentation Method: Pulsante. -> Interaction: Ripristina i dati del template selezionato. -> Justification: Offre una via di fuga sicura.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF5;
+            color: #4A4A4A;
+        }
+        .card {
+            background-color: #FFFFFF;
+            border: 1px solid #EAEAEA;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            transition: all 0.3s ease-in-out;
+        }
+        .btn-select {
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .btn-select.active {
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 3px rgba(184, 148, 102, 0.4);
+            border-color: #B89466;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 280px;
+            margin-left: auto;
+            margin-right: auto;
+            height: auto;
+            min-height: 250px;
+        }
+        @media (min-width: 1024px) {
+            .chart-container {
+                max-width: 320px;
+                min-height: 280px;
+            }
+        }
+        .btn-gemini {
+            background-color: #B89466;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+        }
+        .btn-gemini:hover {
+            background-color: #a07e56;
+        }
+        .btn-reset {
+            background-color: #7f8c8d;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            font-size: 0.875rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+        }
+        .btn-reset:hover {
+            background-color: #6c7a7b;
+        }
+        .btn-gemini-inline {
+             background: none;
+             border: none;
+             cursor: pointer;
+             font-size: 1.25rem;
+             line-height: 1;
+             vertical-align: middle;
+             margin-left: 0.5rem;
+        }
+        .loader {
+            display: inline-block;
+            margin-left: 8px;
+            font-size: 0.8rem;
+            color: #B89466;
+        }
+        .editable-field {
+            background-color: #f9fafb;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            border: 1px solid #e5e7eb;
+            min-height: 2.75rem;
+            transition: all 0.2s ease-in-out;
+            width: 100%;
+        }
+        .editable-field:focus {
+            outline: none;
+            border-color: #B89466;
+            box-shadow: 0 0 0 2px rgba(184, 148, 102, 0.3);
+            background-color: white;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #e5e7eb;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        #slider-combat::-webkit-slider-thumb { background: rgba(211, 108, 108, 1); }
+        #slider-explore::-webkit-slider-thumb { background: rgba(108, 169, 211, 1); }
+        #slider-interact::-webkit-slider-thumb { background: rgba(108, 211, 151, 1); }
+        #slider-combat::-moz-range-thumb { background: rgba(211, 108, 108, 1); }
+        #slider-explore::-moz-range-thumb { background: rgba(108, 169, 211, 1); }
+        #slider-interact::-moz-range-thumb { background: rgba(108, 211, 151, 1); }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto px-4 py-8 md:py-12">
+        
+        <header class="text-center mb-10">
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-800 mb-2">Dichiarazione d'Intenti</h1>
+            <p class="text-base md:text-lg text-gray-600 max-w-3xl mx-auto">Uno strumento interattivo per allineare le aspettative e costruire la tua campagna di gioco di ruolo perfetta.</p>
+        </header>
+
+        <section id="controls" class="mb-10 text-center">
+            <h2 class="text-xl md:text-2xl font-bold text-gray-800 mb-6">Scegli un esempio per iniziare</h2>
+            <div class="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-6">
+                <button id="btn-fantasy" class="btn-select w-full md:w-80 p-4 md:p-6 text-left card hover:shadow-lg hover:-translate-y-1">
+                    <div class="flex items-center">
+                        <span class="text-3xl md:text-4xl mr-4">🏰</span>
+                        <div>
+                            <h3 class="text-lg md:text-xl font-bold text-gray-900">Fantasy Eroica</h3>
+                            <p class="text-sm md:text-base text-gray-600">Avventura, eroismo e grandi battaglie.</p>
+                        </div>
+                    </div>
+                </button>
+                <button id="btn-horror" class="btn-select w-full md:w-80 p-4 md:p-6 text-left card hover:shadow-lg hover:-translate-y-1">
+                    <div class="flex items-center">
+                        <span class="text-3xl md:text-4xl mr-4">🐙</span>
+                        <div>
+                            <h3 class="text-lg md:text-xl font-bold text-gray-900">Horror Investigativo</h3>
+                            <p class="text-sm md:text-base text-gray-600">Mistero, pazzia e orrori cosmici.</p>
+                        </div>
+                    </div>
+                </button>
+            </div>
+            <div id="reset-container" class="mt-6" style="display: none;">
+                <button id="btn-reset" class="btn-reset">Reset Modifiche</button>
+            </div>
+        </section>
+
+        <main id="ddi-content" class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 opacity-0 transition-opacity duration-700">
+            
+            <div class="lg:col-span-2 space-y-6 md:space-y-8">
+                <!-- Stile di Gioco e Regole -->
+                <section class="card p-4 md:p-6">
+                    <h3 class="text-xl md:text-2xl font-bold mb-4 text-gray-800 flex items-center"><span class="text-xl md:text-2xl mr-3">🎲</span> Stile di Gioco e Regole</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-gray-700">
+                        <div>
+                            <h4 class="font-bold text-gray-900 mb-2">Sistema di Gioco</h4>
+                            <div id="info-system" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-900 mb-2">Approccio alle Regole</h4>
+                             <div id="info-rules-approach" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Tono, Ambientazione e Tematiche -->
+                <section class="card p-4 md:p-6">
+                    <h3 class="text-xl md:text-2xl font-bold mb-4 text-gray-800 flex items-center"><span class="text-xl md:text-2xl mr-3">🎭</span> Tono e Tematiche</h3>
+                    <div class="space-y-4 text-gray-700">
+                        <div>
+                            <h4 class="font-bold text-gray-900 flex items-center mb-2">Tono Generale</h4>
+                             <div id="info-tone" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                        </div>
+                         <div>
+                            <h4 class="font-bold text-gray-900 flex items-center mb-2">Riferimenti Ispirazionali<button id="btn-suggest-references" class="btn-gemini-inline" title="Suggerisci altre idee">✨</button><span id="loader-references" class="loader" style="display: none;">...</span></h4>
+                             <div id="info-references" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-900 flex items-center mb-2">Temi Principali<button id="btn-suggest-themes" class="btn-gemini-inline" title="Suggerisci altre idee">✨</button><span id="loader-themes" class="loader" style="display: none;">...</span></h4>
+                             <div id="info-themes" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                        </div>
+                    </div>
+                </section>
+
+                 <!-- Sicurezza Emotiva e Limiti -->
+                <section class="card p-4 md:p-6">
+                    <h3 class="text-xl md:text-2xl font-bold mb-4 text-gray-800 flex items-center"><span class="text-xl md:text-2xl mr-3">🛡️</span> Sicurezza e Limiti</h3>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-gray-700">
+                        <div>
+                            <h4 class="font-bold text-gray-900 mb-2">Linee (Cosa escludere)</h4>
+                             <div id="info-lines" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-900 mb-2">Veli (Cosa non descrivere)</h4>
+                             <div id="info-veils" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                        </div>
+                        <div class="md:col-span-2">
+                             <h4 class="font-bold text-gray-900 mb-2">Altri Strumenti</h4>
+                              <div id="info-tools" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Generatore di Trame -->
+                <section class="card p-4 md:p-6">
+                    <h3 class="text-xl md:text-2xl font-bold mb-4 text-gray-800 flex items-center"><span class="text-xl md:text-2xl mr-3">📜</span> Generatore di Trame</h3>
+                    <p class="text-gray-600 mb-4">Usa la DDI che hai creato per generare un'idea per la prima sessione.</p>
+                    <button id="btn-generate-plot" class="btn-gemini">✨ Genera una Trama Iniziale</button>
+                    <div id="loader-plot" class="mt-4" style="display: none;">
+                        <p class="text-gray-600 animate-pulse">Generazione della trama in corso...</p>
+                    </div>
+                    <div id="plot-output" class="mt-4 p-4 bg-yellow-50/50 border border-yellow-200 rounded-lg" style="display: none;"></div>
+                </section>
+            </div>
+            
+            <div class="space-y-6 md:space-y-8">
+                 <!-- Pilastri del Gioco -->
+                <section class="card p-4 md:p-6">
+                    <h3 class="text-xl md:text-2xl font-bold mb-4 text-gray-800 text-center">Pilastri del Gioco</h3>
+                    <div class="chart-container mb-6">
+                        <canvas id="pillarsChart"></canvas>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="slider-combat" class="flex justify-between font-medium text-sm"><span>Combattimento</span><span id="value-combat">0%</span></label>
+                            <input type="range" id="slider-combat" min="0" max="100" value="33" class="w-full">
+                        </div>
+                        <div>
+                            <label for="slider-explore" class="flex justify-between font-medium text-sm"><span id="label-explore">Esplorazione</span><span id="value-explore">0%</span></label>
+                            <input type="range" id="slider-explore" min="0" max="100" value="33" class="w-full">
+                        </div>
+                        <div>
+                            <label for="slider-interact" class="flex justify-between font-medium text-sm"><span>Interazione</span><span id="value-interact">0%</span></label>
+                            <input type="range" id="slider-interact" min="0" max="100" value="34" class="w-full">
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Personaggi -->
+                <section class="card p-4 md:p-6">
+                    <h3 class="text-xl md:text-2xl font-bold mb-4 text-gray-800 flex items-center"><span class="text-xl md:text-2xl mr-3">👤</span> Personaggi</h3>
+                     <div id="info-characters" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                </section>
+            </div>
+
+        </main>
+        
+        <footer class="text-center mt-12 text-gray-500">
+            <p>Ispirato al concetto di Dichiarazione d'Intenti, potenziato con IA.</p>
+        </footer>
+    </div>
+
+    <script>
+        let currentDdiType = null;
+        const ddiData = {
+            fantasy: {
+                system: "Dungeons & Dragons 5e",
+                rulesApproach: "Approccio flessibile, con la 'Rule of Cool' che prevale sulla regola scritta quando favorisce la narrazione.",
+                tone: "Eroico e avventuroso, con momenti di umorismo e cameratismo.",
+                references: "The Avengers, La Mummia (1999), Guardiani della Galassia.",
+                themes: "Salvare il mondo, riscoprire segreti antichi, forgiare legami di amicizia.",
+                lines: "Nessuna violenza su minori, nessun attacco a sfondo sessuale.",
+                veils: "Descrizioni dettagliate e gratuite di torture o crudeltà.",
+                tools: "Dialogo aperto. Chiunque può chiedere una pausa se un tema diventa troppo intenso.",
+                pillars: [40, 35, 25],
+                characters: "Gli eroi sono destinati a diventare potenti e a fare la differenza. La morte è possibile, ma non sarà mai casuale o puramente punitiva."
+            },
+            horror: {
+                system: "Il Richiamo di Cthulhu 7a Edizione",
+                rulesApproach: "Le regole, specialmente quelle sulla Sanità Mentale, saranno seguite per mantenere alta la tensione.",
+                tone: "Cupo, paranoico e opprimente. L'atmosfera prevale sull'azione.",
+                references: "True Detective (Stagione 1), The Lighthouse, le opere di H.P. Lovecraft.",
+                themes: "Orrore cosmico, follia, l'insignificanza dell'uomo di fronte all'ignoto.",
+                lines: "Autolesionismo, violenza contro gli animali.",
+                veils: "Body horror estremo, violenza grafica esplicita.",
+                tools: "Utilizzo della X-Card. Ogni giocatore può toccarla per segnalare un disagio e modificare la scena senza giustificazioni.",
+                pillars: [10, 60, 30],
+                characters: "Investigatori comuni messi di fronte a orrori incomprensibili. L'aspettativa di vita è bassa e la pazzia è un esito probabile, parte integrante dell'esperienza."
+            }
+        };
+
+        let pillarsChart;
+
+        const ui = {
+            system: document.getElementById('info-system'),
+            rulesApproach: document.getElementById('info-rules-approach'),
+            tone: document.getElementById('info-tone'),
+            references: document.getElementById('info-references'),
+            themes: document.getElementById('info-themes'),
+            lines: document.getElementById('info-lines'),
+            veils: document.getElementById('info-veils'),
+            tools: document.getElementById('info-tools'),
+            characters: document.getElementById('info-characters'),
+            btnFantasy: document.getElementById('btn-fantasy'),
+            btnHorror: document.getElementById('btn-horror'),
+            ddiContent: document.getElementById('ddi-content'),
+            btnGeneratePlot: document.getElementById('btn-generate-plot'),
+            plotOutput: document.getElementById('plot-output'),
+            loaderPlot: document.getElementById('loader-plot'),
+            btnSuggestThemes: document.getElementById('btn-suggest-themes'),
+            loaderThemes: document.getElementById('loader-themes'),
+            btnSuggestReferences: document.getElementById('btn-suggest-references'),
+            loaderReferences: document.getElementById('loader-references'),
+            resetContainer: document.getElementById('reset-container'),
+            btnReset: document.getElementById('btn-reset'),
+            sliders: {
+                combat: document.getElementById('slider-combat'),
+                explore: document.getElementById('slider-explore'),
+                interact: document.getElementById('slider-interact'),
+            },
+            values: {
+                combat: document.getElementById('value-combat'),
+                explore: document.getElementById('value-explore'),
+                interact: document.getElementById('value-interact'),
+            },
+            labels: {
+                explore: document.getElementById('label-explore'),
+            }
+        };
+
+        async function callGemini(prompt) {
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts.length > 0) {
+                    return result.candidates[0].content.parts[0].text;
+                } else {
+                    return "Non sono riuscito a generare una risposta. Riprova.";
+                }
+            } catch (error) {
+                console.error('Error calling Gemini API:', error);
+                return "Si è verificato un errore di connessione. Controlla la console per i dettagli.";
+            }
+        }
+        
+        function loadDdiData(type) {
+            currentDdiType = type;
+            const data = ddiData[type];
+            if (!data) return;
+
+            ui.system.textContent = data.system;
+            ui.rulesApproach.textContent = data.rulesApproach;
+            ui.tone.textContent = data.tone;
+            ui.references.textContent = data.references;
+            ui.themes.textContent = data.themes;
+            ui.lines.textContent = data.lines;
+            ui.veils.textContent = data.veils;
+            ui.tools.textContent = data.tools;
+            ui.characters.textContent = data.characters;
+            
+            const secondLabel = type === 'horror' ? 'Investigazione' : 'Esplorazione';
+            ui.labels.explore.textContent = secondLabel;
+            
+            const [combat, explore, interact] = data.pillars;
+            setSliderValues(combat, explore, interact);
+            updateChart([combat, explore, interact], secondLabel);
+            
+            ui.ddiContent.classList.remove('opacity-0');
+            ui.plotOutput.style.display = 'none';
+            ui.resetContainer.style.display = 'block';
+
+            if (type === 'fantasy') {
+                ui.btnFantasy.classList.add('active');
+                ui.btnHorror.classList.remove('active');
+            } else {
+                ui.btnHorror.classList.add('active');
+                ui.btnFantasy.classList.remove('active');
+            }
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('pillarsChart').getContext('2d');
+            pillarsChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Combattimento', 'Esplorazione', 'Interazione'],
+                    datasets: [{
+                        data: [33, 33, 34],
+                        backgroundColor: ['rgba(211, 108, 108, 0.8)', 'rgba(108, 169, 211, 0.8)', 'rgba(108, 211, 151, 0.8)'],
+                        borderColor: ['rgba(211, 108, 108, 1)', 'rgba(108, 169, 211, 1)', 'rgba(108, 211, 151, 1)'],
+                        borderWidth: 2,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '60%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) { label += ': '; }
+                                    if (context.parsed !== null) { label += context.parsed + '%'; }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateChart(data, secondLabel) {
+            if (!pillarsChart) return;
+            pillarsChart.data.datasets[0].data = data;
+            pillarsChart.data.labels[1] = secondLabel;
+            pillarsChart.update('none');
+        }
+        
+        function setSliderValues(combat, explore, interact) {
+            ui.sliders.combat.value = combat;
+            ui.values.combat.textContent = `${combat}%`;
+            ui.sliders.explore.value = explore;
+            ui.values.explore.textContent = `${explore}%`;
+            ui.sliders.interact.value = interact;
+            ui.values.interact.textContent = `${interact}%`;
+        }
+        
+        function handleSliderInput(sourceSlider) {
+            const sliders = [ui.sliders.combat, ui.sliders.explore, ui.sliders.interact];
+            let values = sliders.map(s => parseInt(s.value, 10));
+            
+            const sourceIndex = sliders.indexOf(sourceSlider);
+            const oldValue = pillarsChart.data.datasets[0].data[sourceIndex];
+            const newValue = parseInt(sourceSlider.value, 10);
+            
+            let delta = oldValue - newValue;
+            
+            // Distribute the delta among the other two sliders
+            let otherIndices = [0,1,2].filter(i => i !== sourceIndex);
+
+            let val1 = values[otherIndices[0]];
+            let val2 = values[otherIndices[1]];
+            
+            let sumOther = val1 + val2;
+            
+            if (sumOther !== 0) {
+                 let ratio1 = val1 / sumOther;
+                 let change1 = Math.round(delta * ratio1);
+                 
+                 val1 += change1;
+                 val2 += (delta - change1);
+
+                 if (val1 < 0) { val2 += val1; val1 = 0; }
+                 if (val2 < 0) { val1 += val2; val2 = 0; }
+            } else { // if both are zero, distribute evenly
+                val1 = Math.floor(delta / 2);
+                val2 = Math.ceil(delta / 2);
+            }
+            
+            let newValues = [];
+            newValues[sourceIndex] = newValue;
+            newValues[otherIndices[0]] = val1;
+            newValues[otherIndices[1]] = val2;
+
+            let total = newValues.reduce((a, b) => a + b, 0);
+            let diff = 100 - total;
+            newValues[sourceIndex] += diff;
+
+            setSliderValues(newValues[0], newValues[1], newValues[2]);
+            updateChart(newValues, ui.labels.explore.textContent);
+        }
+
+        async function handleGeneratePlot() {
+            if (!currentDdiType) {
+                alert("Per favore, seleziona prima un esempio di campagna.");
+                return;
+            }
+            ui.loaderPlot.style.display = 'block';
+            ui.plotOutput.style.display = 'none';
+            
+            const prompt = `Sei un esperto game master. Basandoti su questa Dichiarazione d'Intenti per un gioco di ruolo, scrivi un avvincente aggancio narrativo per la prima sessione (massimo 150 parole).
+            - Sistema di gioco: ${ui.system.textContent}
+            - Tono: ${ui.tone.textContent}
+            - Temi principali: ${ui.themes.textContent}`;
+
+            const result = await callGemini(prompt);
+            ui.plotOutput.innerHTML = result.replace(/\n/g, '<br>');
+            ui.loaderPlot.style.display = 'none';
+            ui.plotOutput.style.display = 'block';
+        }
+
+        async function handleSuggest(type, loaderElement, targetElement) {
+             if (!currentDdiType) {
+                alert("Per favore, seleziona prima un esempio di campagna.");
+                return;
+            }
+            loaderElement.style.display = 'inline-block';
+            
+            let prompt = '';
+            if (type === 'themes') {
+                 prompt = `Data una campagna di gioco di ruolo con questi temi: "${targetElement.textContent}", e questo tono: "${ui.tone.textContent}", suggerisci altri 3 temi correlati e interessanti. Rispondi solo con i temi separati da una virgola.`;
+            } else if (type === 'references') {
+                 prompt = `Per una campagna di gioco di ruolo con questo tono: "${ui.tone.textContent}" e questi temi: "${ui.themes.textContent}", e questi riferimenti: "${targetElement.textContent}", suggerisci altri 3 riferimenti ispirazionali (film, libri, videogiochi). Rispondi solo con i titoli separati da una virgola.`;
+            }
+
+            const result = await callGemini(prompt);
+            if (result && !result.toLowerCase().includes('errore')) {
+                 targetElement.textContent += `, ${result}`;
+            } else {
+                 targetElement.textContent += ` (Errore nella generazione)`;
+            }
+            loaderElement.style.display = 'none';
+        }
+
+        function handleReset() {
+            if(currentDdiType) {
+                loadDdiData(currentDdiType);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initChart();
+            ui.btnFantasy.addEventListener('click', () => loadDdiData('fantasy'));
+            ui.btnHorror.addEventListener('click', () => loadDdiData('horror'));
+            ui.btnGeneratePlot.addEventListener('click', handleGeneratePlot);
+            ui.btnSuggestThemes.addEventListener('click', () => handleSuggest('themes', ui.loaderThemes, ui.themes));
+            ui.btnSuggestReferences.addEventListener('click', () => handleSuggest('references', ui.loaderReferences, ui.references));
+            ui.btnReset.addEventListener('click', handleReset);
+            
+            let activeSlider = null;
+            ['combat', 'explore', 'interact'].forEach(key => {
+                ui.sliders[key].addEventListener('mousedown', () => activeSlider = ui.sliders[key]);
+                ui.sliders[key].addEventListener('input', () => {
+                    if (activeSlider === ui.sliders[key]) handleSliderInput(ui.sliders[key])
+                });
+                ui.sliders[key].addEventListener('mouseup', () => activeSlider = null);
+            });
+        });
+    </script>
+
+</body>
+</html>

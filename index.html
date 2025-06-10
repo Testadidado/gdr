@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dichiarazione d'Intenti: Builder Interattivo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Parchment -->
+    <!-- Application Structure Plan: L'applicazione è un "builder" interattivo e completamente editabile. L'utente può caricare esempi, modificare ogni campo, e copiare il risultato formattato per incollarlo in un word processor. È stato aggiunto un pulsante di reset per ripristinare i dati del template. L'intera struttura è ottimizzata per dispositivi mobili (responsive). -->
+    <!-- Visualization & Content Choices: 
+        - Copy to Clipboard: -> Goal: Fornire un output testuale formattato e condivisibile. -> Viz/Presentation Method: Pulsante di copia. -> Interaction: Click per creare un blocco HTML formattato e copiarlo come rich text negli appunti. -> Justification: Metodo pulito e sicuro per permettere all'utente di incollare testo già formattato in grassetto in editor come Google Docs.
+        - Report Info: Pilastri del Gioco. -> Goal: Permettere la personalizzazione completa delle proporzioni. -> Viz/Presentation Method: Tre slider interattivi collegati a un grafico a ciambella. -> Interaction: L'utente muove uno slider. La logica blocca lo slider toccato in precedenza e adatta il terzo, offrendo un'esperienza d'uso più controllata e intuitiva. Aggiunto supporto per eventi touch. -> Justification: Migliora drasticamente l'usabilità degli slider su tutti i dispositivi.
+        - Report Info: Tutte le sezioni testuali. -> Goal: Permettere la personalizzazione. -> Viz/Presentation Method: Div con `contenteditable="true"`. -> Interaction: L'utente può scrivere direttamente in ogni campo. -> Justification: Trasforma l'app in uno strumento di creazione attivo.
+        - Reset Feature: Pulsante di Reset. -> Goal: Usabilità. -> Viz/Presentation Method: Pulsante. -> Interaction: Ripristina i dati del template. -> Justification: Offre una via di fuga sicura.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF5;
+            color: #4A4A4A;
+        }
+        .card {
+            background-color: #FFFFFF;
+            border: 1px solid #EAEAEA;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            transition: all 0.3s ease-in-out;
+        }
+        .btn-select {
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .btn-select.active {
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 3px rgba(184, 148, 102, 0.4);
+            border-color: #B89466;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 280px;
+            margin-left: auto;
+            margin-right: auto;
+            height: auto;
+            min-height: 250px;
+        }
+        @media (min-width: 1024px) {
+            .chart-container {
+                max-width: 320px;
+                min-height: 280px;
+            }
+        }
+        .btn-action {
+            color: white;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .btn-reset {
+            background-color: #7f8c8d;
+        }
+        .btn-reset:hover {
+            background-color: #6c7a7b;
+        }
+        .btn-copy {
+            background-color: #B89466;
+        }
+        .btn-copy:hover {
+            background-color: #a07e56;
+        }
+        .editable-field {
+            background-color: #f9fafb;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            border: 1px solid #e5e7eb;
+            min-height: 2.75rem;
+            transition: all 0.2s ease-in-out;
+            width: 100%;
+        }
+        .editable-field:focus {
+            outline: none;
+            border-color: #B89466;
+            box-shadow: 0 0 0 2px rgba(184, 148, 102, 0.3);
+            background-color: white;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #e5e7eb;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        #slider-combat::-webkit-slider-thumb { background: rgba(211, 108, 108, 1); }
+        #slider-explore::-webkit-slider-thumb { background: rgba(108, 169, 211, 1); }
+        #slider-interact::-webkit-slider-thumb { background: rgba(108, 211, 151, 1); }
+        #slider-combat::-moz-range-thumb { background: rgba(211, 108, 108, 1); }
+        #slider-explore::-moz-range-thumb { background: rgba(108, 169, 211, 1); }
+        #slider-interact::-moz-range-thumb { background: rgba(108, 211, 151, 1); }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto px-4 py-8 md:py-12">
+        
+        <header class="text-center mb-10">
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-800 mb-2">Dichiarazione d'Intenti</h1>
+            <p class="text-base md:text-lg text-gray-600 max-w-3xl mx-auto">Uno strumento interattivo per allineare le aspettative e costruire la tua campagna di gioco di ruolo perfetta.</p>
+        </header>
+
+        <section id="controls" class="mb-10 text-center">
+            <h2 class="text-xl md:text-2xl font-bold text-gray-800 mb-6">Scegli un esempio per iniziare</h2>
+            <div class="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-6">
+                <button id="btn-fantasy" class="btn-select w-full md:w-80 p-4 md:p-6 text-left card hover:shadow-lg hover:-translate-y-1">
+                    <div class="flex items-center">
+                        <span class="text-3xl md:text-4xl mr-4">🏰</span>
+                        <div>
+                            <h3 class="text-lg md:text-xl font-bold text-gray-900">Fantasy Eroica</h3>
+                            <p class="text-sm md:text-base text-gray-600">Avventura, eroismo e grandi battaglie.</p>
+                        </div>
+                    </div>
+                </button>
+                <button id="btn-horror" class="btn-select w-full md:w-80 p-4 md:p-6 text-left card hover:shadow-lg hover:-translate-y-1">
+                    <div class="flex items-center">
+                        <span class="text-3xl md:text-4xl mr-4">🐙</span>
+                        <div>
+                            <h3 class="text-lg md:text-xl font-bold text-gray-900">Horror Investigativo</h3>
+                            <p class="text-sm md:text-base text-gray-600">Mistero, pazzia e orrori cosmici.</p>
+                        </div>
+                    </div>
+                </button>
+            </div>
+            <div id="action-container" class="mt-6 space-x-4" style="display: none;">
+                <button id="btn-reset" class="btn-action btn-reset">Reset Modifiche</button>
+                <button id="btn-copy" class="btn-action btn-copy">📋 Copia per Docs</button>
+            </div>
+        </section>
+
+        <main id="ddi-content" class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 opacity-0 transition-opacity duration-700">
+            
+            <div class="lg:col-span-2 space-y-6 md:space-y-8">
+                <!-- Stile di Gioco e Regole -->
+                <section class="card p-4 md:p-6">
+                    <h3 class="text-xl md:text-2xl font-bold mb-4 text-gray-800 flex items-center"><span class="text-xl md:text-2xl mr-3">🎲</span> Stile di Gioco e Regole</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-gray-700">
+                        <div>
+                            <h4 id="title-system" class="font-bold text-gray-900 mb-2">Sistema di Gioco</h4>
+                            <div id="info-system" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                        </div>
+                        <div>
+                            <h4 id="title-rules-approach" class="font-bold text-gray-900 mb-2">Approccio alle Regole</h4>
+                             <div id="info-rules-approach" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Tono, Ambientazione e Tematiche -->
+                <section class="card p-4 md:p-6">
+                    <h3 class="text-xl md:text-2xl font-bold mb-4 text-gray-800 flex items-center"><span class="text-xl md:text-2xl mr-3">🎭</span> Tono e Tematiche</h3>
+                    <div class="space-y-4 text-gray-700">
+                        <div>
+                            <h4 id="title-tone" class="font-bold text-gray-900 flex items-center mb-2">Tono Generale</h4>
+                             <div id="info-tone" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                        </div>
+                         <div>
+                            <h4 id="title-references" class="font-bold text-gray-900 flex items-center mb-2">Riferimenti Ispirazionali</h4>
+                             <div id="info-references" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                        </div>
+                        <div>
+                            <h4 id="title-themes" class="font-bold text-gray-900 flex items-center mb-2">Temi Principali</h4>
+                             <div id="info-themes" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                        </div>
+                    </div>
+                </section>
+
+                 <!-- Sicurezza Emotiva e Limiti -->
+                <section class="card p-4 md:p-6">
+                    <h3 class="text-xl md:text-2xl font-bold mb-4 text-gray-800 flex items-center"><span class="text-xl md:text-2xl mr-3">🛡️</span> Sicurezza e Limiti</h3>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-gray-700">
+                        <div>
+                            <h4 id="title-lines" class="font-bold text-gray-900 mb-2">Linee (Cosa escludere)</h4>
+                             <div id="info-lines" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                        </div>
+                        <div>
+                            <h4 id="title-veils" class="font-bold text-gray-900 mb-2">Veli (Cosa non descrivere)</h4>
+                             <div id="info-veils" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                        </div>
+                        <div class="md:col-span-2">
+                             <h4 id="title-tools" class="font-bold text-gray-900 mb-2">Altri Strumenti</h4>
+                              <div id="info-tools" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+            
+            <div class="space-y-6 md:space-y-8">
+                 <!-- Pilastri del Gioco -->
+                <section class="card p-4 md:p-6">
+                    <h3 id="title-pillars" class="text-xl md:text-2xl font-bold mb-4 text-gray-800 text-center">Pilastri del Gioco</h3>
+                    <div class="chart-container mb-6">
+                        <canvas id="pillarsChart"></canvas>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="slider-combat" class="flex justify-between font-medium text-sm"><span>Combattimento</span><span id="value-combat">0%</span></label>
+                            <input type="range" id="slider-combat" data-index="0" min="0" max="100" value="33" class="w-full pillar-slider">
+                        </div>
+                        <div>
+                            <label for="slider-explore" class="flex justify-between font-medium text-sm"><span id="label-explore">Esplorazione</span><span id="value-explore">0%</span></label>
+                            <input type="range" id="slider-explore" data-index="1" min="0" max="100" value="33" class="w-full pillar-slider">
+                        </div>
+                        <div>
+                            <label for="slider-interact" class="flex justify-between font-medium text-sm"><span>Interazione</span><span id="value-interact">0%</span></label>
+                            <input type="range" id="slider-interact" data-index="2" min="0" max="100" value="34" class="w-full pillar-slider">
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Personaggi -->
+                <section class="card p-4 md:p-6">
+                    <h3 id="title-characters" class="text-xl md:text-2xl font-bold mb-4 text-gray-800 flex items-center"><span class="text-xl md:text-2xl mr-3">👤</span> Personaggi</h3>
+                     <div id="info-characters" contenteditable="true" class="editable-field">Seleziona un esempio.</div>
+                </section>
+            </div>
+
+        </main>
+        
+        <footer class="text-center mt-12 text-gray-500">
+            <p>Creato per i Game Master, con un focus sulla personalizzazione.</p>
+        </footer>
+    </div>
+
+    <script>
+        let currentDdiType = null;
+        const ddiData = {
+            fantasy: {
+                system: "Dungeons & Dragons 5e",
+                rulesApproach: "Approccio flessibile, con la 'Rule of Cool' che prevale sulla regola scritta quando favorisce la narrazione.",
+                tone: "Eroico e avventuroso, con momenti di umorismo e cameratismo.",
+                references: "The Avengers, La Mummia (1999), Guardiani della Galassia.",
+                themes: "Salvare il mondo, riscoprire segreti antichi, forgiare legami di amicizia.",
+                lines: "Nessuna violenza su minori, nessun attacco a sfondo sessuale.",
+                veils: "Descrizioni dettagliate e gratuite di torture o crudeltà.",
+                tools: "Dialogo aperto. Chiunque può chiedere una pausa se un tema diventa troppo intenso.",
+                pillars: [40, 35, 25],
+                characters: "Gli eroi sono destinati a diventare potenti e a fare la differenza. La morte è possibile, ma non sarà mai casuale o puramente punitiva."
+            },
+            horror: {
+                system: "Il Richiamo di Cthulhu 7a Edizione",
+                rulesApproach: "Le regole, specialmente quelle sulla Sanità Mentale, saranno seguite per mantenere alta la tensione.",
+                tone: "Cupo, paranoico e opprimente. L'atmosfera prevale sull'azione.",
+                references: "True Detective (Stagione 1), The Lighthouse, le opere di H.P. Lovecraft.",
+                themes: "Orrore cosmico, follia, l'insignificanza dell'uomo di fronte all'ignoto.",
+                lines: "Autolesionismo, violenza contro gli animali.",
+                veils: "Body horror estremo, violenza grafica esplicita.",
+                tools: "Utilizzo della X-Card. Ogni giocatore può toccarla per segnalare un disagio e modificare la scena senza giustificazioni.",
+                pillars: [10, 60, 30],
+                characters: "Investigatori comuni messi di fronte a orrori incomprensibili. L'aspettativa di vita è bassa e la pazzia è un esito probabile, parte integrante dell'esperienza."
+            }
+        };
+
+        let pillarsChart;
+        let sliderInteractionState = { last: null, secondLast: null };
+
+        const ui = {
+            system: document.getElementById('info-system'),
+            rulesApproach: document.getElementById('info-rules-approach'),
+            tone: document.getElementById('info-tone'),
+            references: document.getElementById('info-references'),
+            themes: document.getElementById('info-themes'),
+            lines: document.getElementById('info-lines'),
+            veils: document.getElementById('info-veils'),
+            tools: document.getElementById('info-tools'),
+            characters: document.getElementById('info-characters'),
+            btnFantasy: document.getElementById('btn-fantasy'),
+            btnHorror: document.getElementById('btn-horror'),
+            ddiContent: document.getElementById('ddi-content'),
+            actionContainer: document.getElementById('action-container'),
+            btnReset: document.getElementById('btn-reset'),
+            btnCopy: document.getElementById('btn-copy'),
+            sliders: document.querySelectorAll('.pillar-slider'),
+            values: {
+                combat: document.getElementById('value-combat'),
+                explore: document.getElementById('value-explore'),
+                interact: document.getElementById('value-interact'),
+            },
+            labels: {
+                explore: document.getElementById('label-explore'),
+            }
+        };
+        
+        function loadDdiData(type) {
+            currentDdiType = type;
+            const data = ddiData[type];
+            if (!data) return;
+
+            ui.system.textContent = data.system;
+            ui.rulesApproach.textContent = data.rulesApproach;
+            ui.tone.textContent = data.tone;
+            ui.references.textContent = data.references;
+            ui.themes.textContent = data.themes;
+            ui.lines.textContent = data.lines;
+            ui.veils.textContent = data.veils;
+            ui.tools.textContent = data.tools;
+            ui.characters.textContent = data.characters;
+            
+            const secondLabel = type === 'horror' ? 'Investigazione' : 'Esplorazione';
+            ui.labels.explore.textContent = secondLabel;
+            
+            const [combat, explore, interact] = data.pillars;
+            setSliderValues([combat, explore, interact]);
+            updateChart([combat, explore, interact], secondLabel);
+            
+            ui.ddiContent.classList.remove('opacity-0');
+            ui.actionContainer.style.display = 'block';
+
+            if (type === 'fantasy') {
+                ui.btnFantasy.classList.add('active');
+                ui.btnHorror.classList.remove('active');
+            } else {
+                ui.btnHorror.classList.add('active');
+                ui.btnFantasy.classList.remove('active');
+            }
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('pillarsChart').getContext('2d');
+            pillarsChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Combattimento', 'Esplorazione', 'Interazione'],
+                    datasets: [{
+                        data: [33, 33, 34],
+                        backgroundColor: ['rgba(211, 108, 108, 0.8)', 'rgba(108, 169, 211, 0.8)', 'rgba(108, 211, 151, 0.8)'],
+                        borderColor: ['rgba(211, 108, 108, 1)', 'rgba(108, 169, 211, 1)', 'rgba(108, 211, 151, 1)'],
+                        borderWidth: 2,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '60%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) { label += ': '; }
+                                    if (context.parsed !== null) { label += context.parsed + '%'; }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateChart(data, secondLabel) {
+            if (!pillarsChart) return;
+            pillarsChart.data.datasets[0].data = data;
+            if(secondLabel) pillarsChart.data.labels[1] = secondLabel;
+            pillarsChart.update('none');
+        }
+        
+        function setSliderValues(values) {
+            ui.sliders[0].value = values[0];
+            ui.values.combat.textContent = `${values[0]}%`;
+            ui.sliders[1].value = values[1];
+            ui.values.explore.textContent = `${values[1]}%`;
+            ui.sliders[2].value = values[2];
+            ui.values.interact.textContent = `${values[2]}%`;
+        }
+
+        function updateSliderInteractionState(touchedIndex) {
+            if (sliderInteractionState.last !== touchedIndex) {
+                sliderInteractionState.secondLast = sliderInteractionState.last;
+                sliderInteractionState.last = touchedIndex;
+            }
+        }
+        
+        function handleSliderInput(sourceSlider) {
+            const sourceIndex = parseInt(sourceSlider.dataset.index, 10);
+            const newValue = parseInt(sourceSlider.value, 10);
+            
+            let values = Array.from(ui.sliders).map(s => parseInt(s.value, 10));
+            
+            const lockedIndex = sliderInteractionState.secondLast;
+            const flexibleIndex = [0, 1, 2].find(i => i !== sourceIndex && i !== lockedIndex);
+
+            if (flexibleIndex === undefined || lockedIndex === null) { // Fallback for initial interactions
+                const oldValue = pillarsChart.data.datasets[0].data[sourceIndex];
+                const delta = newValue - oldValue;
+                const otherIndex = [0,1,2].find(i => i !== sourceIndex);
+                values[otherIndex] -= delta;
+            } else {
+                 const oldValue = pillarsChart.data.datasets[0].data[sourceIndex];
+                 const delta = newValue - oldValue;
+                 values[flexibleIndex] -= delta;
+            }
+            
+            // Ensure no value is negative
+            values = values.map(v => Math.max(0, v));
+
+            // Normalize to 100
+            let total = values.reduce((a, b) => a + b, 0);
+            if(total !== 100) {
+                 const diff = total - 100;
+                 if(values[sourceIndex] >= diff) {
+                     values[sourceIndex] -= diff;
+                 } else { // Fallback if source can't cover the difference
+                     const flexibleIdx = flexibleIndex !== undefined ? flexibleIndex : [0,1,2].find(i => i !== sourceIndex);
+                     values[flexibleIdx] -= diff;
+                 }
+            }
+            
+             // Final check for total, distribute rounding errors
+            total = values.reduce((a, b) => a + b, 0);
+            if (total !== 100) {
+                 values[sourceIndex] += (100 - total);
+            }
+
+            setSliderValues(values);
+            updateChart(values);
+        }
+
+        function handleCopyToClipboard() {
+            if (!currentDdiType) {
+                alert("Per favore, seleziona e compila un modello prima di copiare.");
+                return;
+            }
+
+            const sections = [
+                { title: document.getElementById('title-system').textContent, content: ui.system.textContent },
+                { title: document.getElementById('title-rules-approach').textContent, content: ui.rulesApproach.textContent },
+                { title: document.getElementById('title-tone').textContent, content: ui.tone.textContent },
+                { title: document.getElementById('title-references').textContent, content: ui.references.textContent },
+                { title: document.getElementById('title-themes').textContent, content: ui.themes.textContent },
+                { title: document.getElementById('title-lines').textContent, content: ui.lines.textContent },
+                { title: document.getElementById('title-veils').textContent, content: ui.veils.textContent },
+                { title: document.getElementById('title-tools').textContent, content: ui.tools.textContent },
+                { title: document.getElementById('title-characters').textContent, content: ui.characters.textContent },
+            ];
+
+            const tempContainer = document.createElement('div');
+            
+            let htmlContent = '<div><strong>Dichiarazione d\'Intenti</strong></div><div><br></div>';
+
+            sections.forEach(section => {
+                htmlContent += `<div><strong>${section.title}</strong></div><div>${section.content.replace(/\n/g, '<br>')}</div><div><br></div>`;
+            });
+            
+            htmlContent += `<div><strong>${document.getElementById('title-pillars').textContent}</strong></div>`;
+            htmlContent += `<div>- Combattimento: ${ui.values.combat.textContent}</div>`;
+            htmlContent += `<div>- ${ui.labels.explore.textContent}: ${ui.values.explore.textContent}</div>`;
+            htmlContent += `<div>- Interazione: ${ui.values.interact.textContent}</div>`;
+
+            tempContainer.innerHTML = htmlContent;
+
+            const listener = function(e) {
+                e.preventDefault();
+                e.clipboardData.setData('text/html', tempContainer.innerHTML);
+                e.clipboardData.setData('text/plain', tempContainer.innerText);
+            };
+
+            document.addEventListener('copy', listener);
+            document.execCommand('copy');
+            document.removeEventListener('copy', listener);
+
+            const originalText = ui.btnCopy.textContent;
+            ui.btnCopy.textContent = "Copiato!";
+            setTimeout(() => {
+                ui.btnCopy.textContent = originalText;
+            }, 2000);
+        }
+
+        function handleReset() {
+            if(currentDdiType) {
+                loadDdiData(currentDdiType);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initChart();
+            ui.btnFantasy.addEventListener('click', () => loadDdiData('fantasy'));
+            ui.btnHorror.addEventListener('click', () => loadDdiData('horror'));
+            ui.btnReset.addEventListener('click', handleReset);
+            ui.btnCopy.addEventListener('click', handleCopyToClipboard);
+            
+            ui.sliders.forEach(slider => {
+                const index = parseInt(slider.dataset.index, 10);
+
+                const startInteraction = () => {
+                     // Set initial values on start for correct delta calculation
+                    updateChart(Array.from(ui.sliders).map(s => parseInt(s.value, 10)));
+                    updateSliderInteractionState(index);
+                }
+
+                const moveInteraction = () => {
+                     handleSliderInput(slider);
+                }
+
+                slider.addEventListener('mousedown', startInteraction);
+                slider.addEventListener('input', moveInteraction);
+                
+                slider.addEventListener('touchstart', startInteraction, { passive: true });
+                slider.addEventListener('touchmove', moveInteraction, { passive: true });
+            });
+        });
+    </script>
+
+</body>
+</html>
